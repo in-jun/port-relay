@@ -30,7 +30,8 @@ final class RelayEngine {
             let tcp = TCPRelay()
             udp.start(config: config, logger: logger)
             tcp.start(config: config, logger: logger)
-            relays.append(contentsOf: [udp, tcp])
+            relays.append(udp)
+            relays.append(tcp)
         }
 
         isRunning = true
