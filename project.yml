@@ -22,4 +22,8 @@ targets:
         CFBundleVersion: "1"
         CFBundleShortVersionString: "1.0"
         UILaunchScreen: {}
+        UIBackgroundModes:
+          - location
         NSLocalNetworkUsageDescription: "Port Relay needs local network access to listen for incoming connections and forward traffic."
+        NSLocationWhenInUseUsageDescription: "Used to keep the relay running while the app is in background."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Used to keep the relay running while the app is in background."

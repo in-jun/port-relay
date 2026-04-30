@@ -8,9 +8,11 @@ final class RelayEngine {
     private(set) var logs: [String] = []
 
     private var relays: [any Relay] = []
+    private let keeper = BackgroundKeeper()
 
     func start(config: RelayConfig) {
         stop()
+        keeper.start()
 
         let logger: @Sendable (String) -> Void = { [weak self] msg in
             Task { @MainActor in self?.appendLog(msg) }
@@ -40,6 +42,7 @@ final class RelayEngine {
     func stop() {
         relays.forEach { $0.stop() }
         relays.removeAll()
+        keeper.stop()
         if isRunning { appendLog("Stopped") }
         isRunning = false
     }
