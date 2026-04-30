@@ -4,13 +4,19 @@ import Foundation
 final class TCPRelay: Relay, @unchecked Sendable {
     private var listener: NWListener?
     private var sessions: [RelaySession] = []
-    private let queue = DispatchQueue(label: "tcp-relay", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "tcp-relay", qos: .userInteractive)
     private var log: (@Sendable (String) -> Void)?
+
+    private static let lowLatencyParams: NWParameters = {
+        let tcp = NWProtocolTCP.Options()
+        tcp.noDelay = true
+        return NWParameters(tls: nil, tcp: tcp)
+    }()
 
     func start(config: RelayConfig, logger: @escaping @Sendable (String) -> Void) {
         self.log = logger
         guard let port = NWEndpoint.Port(rawValue: config.listenPort) else { return }
-        guard let newListener = try? NWListener(using: .tcp, on: port) else {
+        guard let newListener = try? NWListener(using: Self.lowLatencyParams, on: port) else {
             logger("TCP: failed to bind \(config.listenPort)")
             return
         }
@@ -38,14 +44,15 @@ final class TCPRelay: Relay, @unchecked Sendable {
     }
 
     private func handleConnection(_ inbound: NWConnection, config: RelayConfig) {
-        inbound.start(queue: queue)
+        let connQueue = DispatchQueue(label: "tcp-conn", qos: .userInteractive)
+        inbound.start(queue: connQueue)
 
         let outbound = NWConnection(
             host: NWEndpoint.Host(config.remoteHost),
             port: NWEndpoint.Port(rawValue: config.remotePort)!,
-            using: .tcp
+            using: Self.lowLatencyParams
         )
-        outbound.start(queue: queue)
+        outbound.start(queue: connQueue)
 
         let session = RelaySession(inbound: inbound, outbound: outbound)
         sessions.append(session)

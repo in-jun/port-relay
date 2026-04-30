@@ -4,7 +4,7 @@ import Foundation
 final class UDPRelay: Relay, @unchecked Sendable {
     private var listener: NWListener?
     private var sessions: [RelaySession] = []
-    private let queue = DispatchQueue(label: "udp-relay", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "udp-relay", qos: .userInteractive)
     private var log: (@Sendable (String) -> Void)?
 
     func start(config: RelayConfig, logger: @escaping @Sendable (String) -> Void) {
@@ -38,14 +38,15 @@ final class UDPRelay: Relay, @unchecked Sendable {
     }
 
     private func handleConnection(_ inbound: NWConnection, config: RelayConfig) {
-        inbound.start(queue: queue)
+        let connQueue = DispatchQueue(label: "udp-conn", qos: .userInteractive)
+        inbound.start(queue: connQueue)
 
         let outbound = NWConnection(
             host: NWEndpoint.Host(config.remoteHost),
             port: NWEndpoint.Port(rawValue: config.remotePort)!,
             using: .udp
         )
-        outbound.start(queue: queue)
+        outbound.start(queue: connQueue)
 
         let session = RelaySession(inbound: inbound, outbound: outbound)
         sessions.append(session)
