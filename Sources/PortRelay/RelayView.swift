@@ -30,7 +30,7 @@ struct RelayView: View {
                 logSection
             }
             .navigationTitle("Port Relay")
-            .scrollDismissesKeyboard(.immediately)
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 
