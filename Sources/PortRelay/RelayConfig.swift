@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 enum RelayProtocol: String, CaseIterable, Sendable {
     case udp = "UDP"
@@ -7,9 +8,9 @@ enum RelayProtocol: String, CaseIterable, Sendable {
 }
 
 struct RelayConfig: Sendable {
-    let listenPort: UInt16
-    let remoteHost: String
-    let remotePort: UInt16
+    let listenPort: NWEndpoint.Port
+    let remoteHost: NWEndpoint.Host
+    let remotePort: NWEndpoint.Port
     let proto: RelayProtocol
 
     var remoteEndpoint: String { "\(remoteHost):\(remotePort)" }
@@ -30,20 +31,18 @@ extension RelayConfig {
         }
     }
 
-    static func validate(
-        listenPort: String,
-        remoteHost: String,
-        remotePort: String
-    ) -> Result<(UInt16, String, UInt16), ValidationError> {
-        guard let lp = UInt16(listenPort), lp > 0 else {
-            return .failure(.invalidListenPort)
+    init(listenPort: String, remoteHost: String, remotePort: String, proto: RelayProtocol) throws {
+        guard let lp = UInt16(listenPort).flatMap(NWEndpoint.Port.init(rawValue:)) else {
+            throw ValidationError.invalidListenPort
         }
-        guard !remoteHost.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return .failure(.emptyHost)
+        let host = remoteHost.trimmingCharacters(in: .whitespaces)
+        guard !host.isEmpty else { throw ValidationError.emptyHost }
+        guard let rp = UInt16(remotePort).flatMap(NWEndpoint.Port.init(rawValue:)) else {
+            throw ValidationError.invalidRemotePort
         }
-        guard let rp = UInt16(remotePort), rp > 0 else {
-            return .failure(.invalidRemotePort)
-        }
-        return .success((lp, remoteHost.trimmingCharacters(in: .whitespaces), rp))
+        self.listenPort = lp
+        self.remoteHost = NWEndpoint.Host(host)
+        self.remotePort = rp
+        self.proto = proto
     }
 }

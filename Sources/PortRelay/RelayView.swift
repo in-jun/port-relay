@@ -1,23 +1,24 @@
 import SwiftUI
 
 struct RelayView: View {
+    private enum Field: Hashable { case listenPort, remoteHost, remotePort }
+    private enum StorageKey: String { case listenPort, remoteHost, remotePort, selectedProto }
+
     @State private var engine = RelayEngine()
-    @AppStorage("listenPort") private var listenPort = ""
-    @AppStorage("remoteHost") private var remoteHost = ""
-    @AppStorage("remotePort") private var remotePort = ""
-    @AppStorage("selectedProto") private var selectedProto: RelayProtocol = .udp
+    @AppStorage(StorageKey.listenPort.rawValue) private var listenPort = ""
+    @AppStorage(StorageKey.remoteHost.rawValue) private var remoteHost = ""
+    @AppStorage(StorageKey.remotePort.rawValue) private var remotePort = ""
+    @AppStorage(StorageKey.selectedProto.rawValue) private var selectedProto: RelayProtocol = .udp
     @State private var errorMessage: String?
     @FocusState private var focused: Field?
 
-    private enum Field: Hashable { case listenPort, remoteHost, remotePort }
-
-    private var isInputValid: Bool {
-        guard let lp = UInt16(listenPort), lp > 0,
-              let rp = UInt16(remotePort), rp > 0,
-              !remoteHost.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return false
-        }
-        return true
+    private var pendingConfig: RelayConfig? {
+        try? RelayConfig(
+            listenPort: listenPort,
+            remoteHost: remoteHost,
+            remotePort: remotePort,
+            proto: selectedProto
+        )
     }
 
     var body: some View {
@@ -63,8 +64,8 @@ struct RelayView: View {
     private var protocolSection: some View {
         Section("Protocol") {
             Picker("Protocol", selection: $selectedProto) {
-                ForEach(RelayProtocol.allCases, id: \.self) { p in
-                    Text(p.rawValue).tag(p)
+                ForEach(RelayProtocol.allCases, id: \.self) { proto in
+                    Text(proto.rawValue).tag(proto)
                 }
             }
             .pickerStyle(.segmented)
@@ -79,14 +80,12 @@ struct RelayView: View {
                     .foregroundStyle(.red)
                     .font(.caption)
             }
-            Button {
-                toggle()
-            } label: {
+            Button(action: toggle) {
                 Text(engine.isRunning ? "Stop" : "Start")
                     .frame(maxWidth: .infinity)
                     .fontWeight(.semibold)
             }
-            .disabled(!engine.isRunning && !isInputValid)
+            .disabled(!engine.isRunning && pendingConfig == nil)
             .foregroundStyle(engine.isRunning ? .red : .green)
         }
     }
@@ -96,18 +95,15 @@ struct RelayView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(engine.logs.enumerated()), id: \.offset) { i, line in
-                            Text(line)
+                        ForEach(engine.logs) { entry in
+                            Text(entry.formatted)
                                 .font(.system(.caption, design: .monospaced))
-                                .id(i)
                         }
                     }
                 }
                 .frame(minHeight: 200)
-                .onChange(of: engine.logs.count) {
-                    if let last = engine.logs.indices.last {
-                        proxy.scrollTo(last, anchor: .bottom)
-                    }
+                .onChange(of: engine.logs.last?.id) { _, last in
+                    if let last { proxy.scrollTo(last, anchor: .bottom) }
                 }
             }
         }
@@ -120,13 +116,18 @@ struct RelayView: View {
             errorMessage = nil
             return
         }
-
-        switch RelayConfig.validate(listenPort: listenPort, remoteHost: remoteHost, remotePort: remotePort) {
-        case .success(let (lp, host, rp)):
+        do {
+            let config = try RelayConfig(
+                listenPort: listenPort,
+                remoteHost: remoteHost,
+                remotePort: remotePort,
+                proto: selectedProto
+            )
             errorMessage = nil
-            let config = RelayConfig(listenPort: lp, remoteHost: host, remotePort: rp, proto: selectedProto)
             engine.start(config: config)
-        case .failure(let error):
+        } catch let error as RelayConfig.ValidationError {
+            errorMessage = error.errorDescription
+        } catch {
             errorMessage = error.localizedDescription
         }
     }
