@@ -2,9 +2,9 @@ import SwiftUI
 
 struct RelayView: View {
     @State private var engine = RelayEngine()
-    @State private var listenPort = "51820"
+    @State private var listenPort = ""
     @State private var remoteHost = ""
-    @State private var remotePort = "51820"
+    @State private var remotePort = ""
     @State private var selectedProto = RelayProtocol.udp
     @State private var errorMessage: String?
 
