@@ -123,12 +123,10 @@ struct RelayView: View {
                 remotePort: remotePort,
                 proto: selectedProto
             )
+            try engine.start(config: config)
             errorMessage = nil
-            engine.start(config: config)
-        } catch let error as RelayConfig.ValidationError {
-            errorMessage = error.errorDescription
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

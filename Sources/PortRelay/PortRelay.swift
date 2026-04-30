@@ -84,15 +84,8 @@ final class PortRelay: Sendable {
         self.queue = DispatchQueue(label: "relay.\(behavior.label.lowercased())", qos: .userInteractive)
     }
 
-    func start() {
-        let listener: NWListener
-        do {
-            listener = try NWListener(using: behavior.parameters(), on: config.listenPort)
-        } catch {
-            log("\(behavior.label): bind failed on \(config.listenPort) (\(error.localizedDescription))")
-            return
-        }
-
+    func start() throws {
+        let listener = try NWListener(using: behavior.parameters(), on: config.listenPort)
         listener.newConnectionHandler = { [weak self] in self?.accept($0) }
         listener.stateUpdateHandler = { [weak self] state in
             guard let self, case .failed(let error) = state else { return }
