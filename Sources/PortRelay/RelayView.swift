@@ -2,11 +2,14 @@ import SwiftUI
 
 struct RelayView: View {
     @State private var engine = RelayEngine()
-    @State private var listenPort = ""
-    @State private var remoteHost = ""
-    @State private var remotePort = ""
-    @State private var selectedProto = RelayProtocol.udp
+    @AppStorage("listenPort") private var listenPort = ""
+    @AppStorage("remoteHost") private var remoteHost = ""
+    @AppStorage("remotePort") private var remotePort = ""
+    @AppStorage("selectedProto") private var selectedProto: RelayProtocol = .udp
     @State private var errorMessage: String?
+    @FocusState private var focused: Field?
+
+    private enum Field: Hashable { case listenPort, remoteHost, remotePort }
 
     private var isInputValid: Bool {
         guard let lp = UInt16(listenPort), lp > 0,
@@ -27,6 +30,13 @@ struct RelayView: View {
                 logSection
             }
             .navigationTitle("Port Relay")
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focused = nil }
+                }
+            }
         }
     }
 
@@ -34,6 +44,8 @@ struct RelayView: View {
         Section("Listen") {
             TextField("Port", text: $listenPort)
                 .keyboardType(.numberPad)
+                .focused($focused, equals: .listenPort)
+                .disabled(engine.isRunning)
         }
     }
 
@@ -43,8 +55,14 @@ struct RelayView: View {
                 .keyboardType(.URL)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
+                .submitLabel(.next)
+                .focused($focused, equals: .remoteHost)
+                .disabled(engine.isRunning)
+                .onSubmit { focused = .remotePort }
             TextField("Port", text: $remotePort)
                 .keyboardType(.numberPad)
+                .focused($focused, equals: .remotePort)
+                .disabled(engine.isRunning)
         }
     }
 
@@ -56,6 +74,7 @@ struct RelayView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .disabled(engine.isRunning)
         }
     }
 
@@ -101,6 +120,7 @@ struct RelayView: View {
     }
 
     private func toggle() {
+        focused = nil
         if engine.isRunning {
             engine.stop()
             errorMessage = nil
