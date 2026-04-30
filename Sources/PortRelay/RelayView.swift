@@ -30,13 +30,7 @@ struct RelayView: View {
                 logSection
             }
             .navigationTitle("Port Relay")
-            .scrollDismissesKeyboard(.interactively)
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focused = nil }
-                }
-            }
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 
