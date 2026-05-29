@@ -13,6 +13,9 @@ targets:
     platform: iOS
     sources:
       - Sources/PortRelay
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: Info.plist
       properties:
